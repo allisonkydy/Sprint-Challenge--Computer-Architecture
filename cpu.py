@@ -289,31 +289,43 @@ class CPU:
         # if equal flag set to true, jump to address stored in given register
         if self.fl & 0b00000001 != 0:
             self.JMP(reg_a)
+        else:
+            self.pc += 2
 
     def JGE(self, reg_a):
         # if greater-than flag or equal flag set to true, jump to address stored in given register
         if self.fl & 0b00000011 != 0:
             self.JMP(reg_a)
+        else:
+            self.pc += 2
 
     def JGT(self, reg_a):
         # if greater-than flag set to true, jump to address stored in given register
         if self.fl & 0b00000010 != 0:
             self.JMP(reg_a)
+        else:
+            self.pc += 2
 
     def JLE(self, reg_a):
         # if less-than flag or equal flag set to true, jump to address stored in given register
         if self.fl & 0b00000101 != 0:
             self.JMP(reg_a)
+        else:
+            self.pc += 2
 
     def JLT(self, reg_a):
         # if less-than flag set to true, jump to address stored in given register
         if self.fl & 0b00000100 != 0:
             self.JMP(reg_a)
+        else:
+            self.pc += 2
 
     def JNE(self, reg_a):
         # if equal flag is clear (false, 0), jump to the address stored in the given register.
         if self.fl & 0b00000001 == 0:
             self.JMP(reg_a)
+        else:
+            self.pc += 2
 
     def LD(self, reg_a, reg_b):
         # loads register a with the value at the memory address stored in register b
