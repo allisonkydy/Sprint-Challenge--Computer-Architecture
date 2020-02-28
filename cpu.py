@@ -36,6 +36,7 @@ NOP = 0b00000000
 PRA = 0b01001000
 INT = 0b01010010
 IRET = 0b00010011
+ADDI = 0b10101110
 
 
 class CPU:
@@ -92,6 +93,7 @@ class CPU:
             PRA: self.PRA,
             INT: self.INT,
             IRET: self.IRET,
+            ADDI: self.alu,
         }
 
     def load(self):
@@ -171,6 +173,9 @@ class CPU:
             self.reg[reg_a] = self.reg[reg_a] >> self.reg[reg_b]
         elif op == XOR:
             self.reg[reg_a] = self.reg[reg_a] ^ self.reg[reg_b]
+        elif op == ADDI:
+            val = reg_b
+            self.reg[reg_a] += val
         else:
             raise Exception("Unsupported ALU operation")
 
