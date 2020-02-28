@@ -1,6 +1,7 @@
 """CPU functionality."""
 
 import sys
+import time
 
 HLT = 0b00000001
 LDI = 0b10000010
@@ -47,8 +48,11 @@ class CPU:
         # memory
         self.ram = [0] * 256
         # registers
+            # R5 = interrupt mask (IM)
+            # R6 = interrupt status (IS)
+            # R7 = stack pointer (SP)
         self.reg = [0] * 8
-        # reset stack pointer - R7
+        # reset SP
         self.reg[7] = 0xF4
 
         # internal registers:
@@ -56,6 +60,8 @@ class CPU:
         self.pc = 0
         # flags - 00000LGE
         self.fl = 0
+
+        self.interrupts_enabled = 1
 
         # branch table
         self.branchtable = {
@@ -204,10 +210,30 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
+        start_time = time.time()
+        offset = 1
 
         while True:
+            current_time = time.time()
+            if current_time - start_time >= offset:
+                self.reg[6] = self.reg[6] ^ 0b00000001
+                offset += 1
+
+            # check for interrupts if enabled
+            if self.interrupts_enabled:
+                # The IM register is bitwise AND-ed with the IS register and the results stored as maskedInterrupts.
+                masked_interrupts = self.reg[5] & self.reg[6]
+                # Each bit of maskedInterrupts is checked, starting from 0 and going up to the 7th bit, one for each interrupt.
+                for bit in range(8):
+                    # If a bit is found to be set, follow the next sequence of steps.
+                    if masked_interrupts & (0b00000001 << bit) != 0:
+                        self.interrupt(bit)
+                        # Stop further checking of maskedInterrupts.
+                        break
+
             # instruction register
             ir = self.pc
+
             # read command
             op = self.ram_read(ir)
             # read operands
@@ -345,8 +371,51 @@ class CPU:
         val = self.reg[reg_a]
         print(chr(val))
 
-    def INT(self):
-        pass
+    def INT(self, reg_a):
+        # Issue the interrupt number stored in the given register.
+        # This will set the _n_th bit in the IS register to the value in the given register.
+        self.reg[6] = 0b00000001 << self.reg[reg_a]
 
     def IRET(self):
-        pass
+        # Return from an interrupt handler.
+
+        # Registers R6-R0 are popped off the stack in that order.
+        self.POP(6)
+        self.POP(5)
+        self.POP(4)
+        self.POP(3)
+        self.POP(2)
+        self.POP(1)
+        self.POP(0)
+        # The FL register is popped off the stack.
+        self.fl = self.ram[self.reg[7]]
+        self.reg[7] += 1
+        # The return address is popped off the stack and stored in PC.
+        self.pc = self.ram[self.reg[7]]
+        self.reg[7] += 1
+        # Interrupts are re-enabled
+        self.interrupts_enabled = 1
+
+    def interrupt(self, bit):
+        # Disable further interrupts.
+        self.interrupts_enabled = 0
+        # Clear the bit in the IS register.
+        self.reg[6] = self.reg[6] ^ (0b00000001 << bit)
+        # The PC register is pushed on the stack.
+        self.reg[7] -= 1
+        self.ram[self.reg[7]] = self.pc
+        # The FL register is pushed on the stack.
+        self.reg[7] -= 1
+        self.ram[self.reg[7]] = self.fl
+        # Registers R0-R6 are pushed on the stack in that order.
+        self.PUSH(0)
+        self.PUSH(1)
+        self.PUSH(2)
+        self.PUSH(3)
+        self.PUSH(4)
+        self.PUSH(5)
+        self.PUSH(6)
+        # The address (vector in interrupt terminology) of the appropriate handler is looked up from the interrupt vector table.
+        vector = self.ram[~(bit ^ 0b0111) & 0xFF]
+        # Set the PC to the handler address.
+        self.pc = vector
